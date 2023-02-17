@@ -3,6 +3,7 @@
 #include "imports/stdlib.fc";
 #include "imports/constants.fc";
 #include "imports/utils.fc";
+(cell, ()) ~udict::set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
 
 ;; =============== storage =============================
 
@@ -25,21 +26,16 @@
   set_data(storage);
 }
 
-;; () save_data(slice sender_address, cell profile) impure inline {
-;;   set_data(begin_cell()
-;;     .store_slice(sender_address)
-;;     .store_dict(profile)
-;;     .end_cell());
-;; }
+slice create_profile(int byte) inline {
+    cell c = begin_cell().store_uint(byte, 64).end_cell();
+    return c.begin_parse();
+}
 
-;; () add_profile (slice sender_address, cell profile) impure inline {
-;;   set_data(begin_cell()
-;;     .store_slice(sender_address)
-;;     .store_dict(profile)
-;;     .end_cell());
-;; }
-
-
+() add_profile(int value) inline {
+  (_, _, cell profiles) = load_data();
+  profiles~udict_set(64, 1, create_profile(value));
+  set_data(profiles);
+}
 ;; =============== messages =============================
 
 ;; message binary format is defined as TL-B in companion .tlb file
@@ -66,35 +62,15 @@
     add_checker(sender_address);
     return ();
   }
-
-  ;; if (op == op::add_profile) {
-  ;;   ;; empty since ton received (msg_value) is added automatically to contract balance
-  ;;   ;; ~dump msg_value; ;; an example of debug output, requires running contract in debug mode
-  ;;   add_profile(profile, checker_address)
-  ;;   return ();
-  ;; }
-  
-  ;; if (op == op::share_profile) {
-  ;;   throw_unless(error::access_denied, equal_slices(sender_address, owner_address));
-  ;;   int withdraw_amount = in_msg_body~load_coins();
-  ;;   op_withdraw(withdraw_amount, owner_address);
-  ;;   return ();
-  ;; }
-
-  ;; if (op == op::transfer_ownership) {
-  ;;   throw_unless(error::access_denied, equal_slices(sender_address, owner_address));
-  ;;   slice new_owner_address = in_msg_body~load_msg_addr();
-  ;;   save_data(new_owner_address, profile);
-  ;;   return ();
-  ;; }
-
+  if (op == op::add_profile) {
+    add_profile(query_id);
+    return ();
+  }
   throw(error::unknown_op);
 }
+;; Getters
 
-
-;; =============== getters =============================
-
-;; =============== Helpers =============================
-
-
-
+cell get_profiles() method_id {
+    (_,_, cell profiles) = load_data();
+    return profiles;
+}

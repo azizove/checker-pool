@@ -1,6 +1,6 @@
 import {Blockchain} from '@ton-community/sandbox'
 import {Cell, toNano} from 'ton-core'
-import {checker} from '../wrappers/checker'
+import {Checker} from '../wrappers/Checker'
 import '@ton-community/test-utils'
 import {compile} from '@ton-community/blueprint'
 
@@ -14,7 +14,7 @@ describe('checker', () => {
     it('should deploy', async () => {
         const blockchain = await Blockchain.create()
 
-        const checker = blockchain.openContract(await checker.createFromConfig({}, code))
+        const checker = blockchain.openContract(await Checker.createFromConfig({}, code))
 
         const deployer = await blockchain.treasury('deployer')
 

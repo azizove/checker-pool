@@ -6,7 +6,7 @@
         "test": "jest",
         "create": "npx blueprint create",
         "build": "npx blueprint build",
-        "run": "npx blueprint run"
+        "deploy": "npx blueprint run"
     },
     "devDependencies": {
         "@ton-community/blueprint": "^0.0.2",

@@ -1,7 +1,7 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from "ton-core";
 
 export type CheckerConfig = {
-
+    id: number;
 }
 
 export function checkerConfigToCell(config: CheckerConfig): Cell {

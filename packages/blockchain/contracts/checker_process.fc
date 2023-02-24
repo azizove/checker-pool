@@ -3,74 +3,67 @@
 #include "imports/stdlib.fc";
 #include "imports/constants.fc";
 #include "imports/utils.fc";
+(cell, (slice, int)) ~udict::delete_get?(cell dict, int key_len, int index) asm(index dict key_len) "DICTUDELGET" "NULLSWAPIFNOT";
 (cell, ()) ~udict::set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+(slice, int) udict::get?(cell dict, int key_len, int index) asm(index dict key_len) "DICTUGET" "NULLSWAPIFNOT";
+(cell, int, slice, int) udict::delete_get_min(cell dict, int key_len) asm(-> 0 2 1 3) "DICTUREMMIN" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
 
 ;; =============== storage =============================
+global int id;
+global cell profiles;
 
-;; storage binary format is defined as TL-B in companion .tlb file
-(slice, int, cell) load_data() inline {
-  var ds = get_data().begin_parse();
-  (slice checker_address, int created_at, cell profiles) = (ds~load_msg_addr(), ds~load_uint(32), ds~load_dict());
-  
-  return (checker_address,created_at, profiles);
+() load_data() impure {
+  var cs = get_data().begin_parse();
+  id = cs~load_uint(32);
+  profiles = cs~load_dict();
+  cs.end_parse();
 }
 
-() add_checker(slice checker_address) {
-  var created_at = now();
-  var profiles = new_dict();
-  cell storage =  begin_cell()
-                  .store_slice(checker_address)
-                  .store_uint(created_at, 32)
-                  .store_dict(profiles)
-                .end_cell();
-  set_data(storage);
+
+() recv_internal(int balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+	int op = in_msg_body~load_uint(32);
+	;; int query_id = in_msg_body~load_uint(64);
+
+
+  load_data();
+	
+
+
+	if (op == 1) {
+		int key = in_msg_body~load_uint(256);
+		profiles~udict_set(256, key, in_msg_body);
+    	set_data(begin_cell().store_uint(id, 32).store_dict(profiles).end_cell());
+		return ();
+	}
+
+	;; if (op == 2) {
+	;; 	in_msg_body.end_parse();
+	;; 	int key = -1;
+	;; 	do {
+	;; 		(key, slice cs, int f) = dic.udict_get_next?(256, key);
+	;; 		if (f) {
+	;; 			int valid_until = cs~load_uint(64);
+	;; 			if (valid_until < now()) {
+	;; 				dic~udict_delete?(256, key);
+	;; 			}
+	;; 		}
+	;; 	} until (~ f);
+
+	;; 	if (dic.dict_empty?()) {
+	;; 		set_data(begin_cell().end_cell());
+	;; 	} else {
+	;; 		set_data(dic);
+	;; 	}
+
+	;; 	return ();
+	;; }
+
+	throw (12);
 }
 
-slice create_profile(int byte) inline {
-    cell c = begin_cell().store_uint(byte, 64).end_cell();
-    return c.begin_parse();
-}
-
-() add_profile(int value) inline {
-  (_, _, cell profiles) = load_data();
-  profiles~udict_set(64, 1, create_profile(value));
-  set_data(profiles);
-}
-;; =============== messages =============================
-
-;; message binary format is defined as TL-B in companion .tlb file
-
-() recv_internal(int msg_value, cell in_msg, slice in_msg_body) impure {
-  ;; parse incoming internal message
-  slice cs = in_msg.begin_parse();
-  int flags = cs~load_uint(4); ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
-  slice sender_address = cs~load_msg_addr();
-
-  ;; handle bounced messages
-  if (flags & 1) {
-    return (); ;; ignore
-  }
-
-  ;; load from contract storage
-  ;; var (checker_address, created_at) = load_data();
-
-  ;; handle operations
-  int op = in_msg_body~load_uint(32);
-  int query_id = in_msg_body~load_uint(64);
-  
-  if (op == op::add_checker) {
-    add_checker(sender_address);
-    return ();
-  }
-  if (op == op::add_profile) {
-    add_profile(query_id);
-    return ();
-  }
-  throw(error::unknown_op);
-}
-;; Getters
-
-cell get_profiles() method_id {
-    (_,_, cell profiles) = load_data();
-    return profiles;
+slice get_key(int key) method_id {
+	load_data();
+	(slice payload, int success) = profiles.udict_get?(256, key);
+	throw_unless(key, success);
+  	return payload;
 }

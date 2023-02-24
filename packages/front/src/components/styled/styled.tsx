@@ -51,3 +51,29 @@ export const Input = styled("input")`
     border: 1px solid #fefefe;
   }
 `;
+export const StyledForm = styled.form`
+  background-color: #f4f4f4;
+  padding: 20px;
+  border-radius: 5px;
+`
+
+export const StyledLabel = styled.label`
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: black;
+`
+
+export const StyledInput = styled.input`
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+`
+
+export const StyledAlert = styled.div`
+  padding: 10px;
+  background-color: #f44336;
+  color: white;
+  margin-top: 10px;
+  border-radius: 5px;`

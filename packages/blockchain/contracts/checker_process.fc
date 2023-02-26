@@ -67,3 +67,8 @@ slice get_key(int key) method_id {
 	throw_unless(key, success);
   	return payload;
 }
+
+cell get_profiles() method_id {
+	load_data();
+  	return profiles;
+}

@@ -1,3 +1,2 @@
-import {getIdFromAddress} from './identifiers';
+export * from './identifiers';
 
-export default {getIdFromAddress};

@@ -7,8 +7,14 @@ import {
     beginCell,
     contractAddress,
     TupleBuilder,
-    TupleReader
+    TupleReader,
+    Dictionary,
+    Slice,
+    DictionaryValue,
+    Builder,
+    SimpleLibrary
   } from "ton-core";
+import { Maybe } from "ton-core/dist/utils/maybe";
 import { getIdFromAddress } from "../helpers/identifiers";
 import { Profile } from "../models";
 
@@ -18,42 +24,53 @@ export const Opcodes = {
     getProfile:3
 }
 
-export default class CheckerProcess implements Contract {
-    // static createForDeploy(code: Cell, initialCheckerValue: number): CheckerProcess {
-    //     const data = beginCell().storeUint(initialCheckerValue, 64).endCell();
-    //     const workchain = 0; // deploy to workchain 0
-    //     const address = contractAddress(workchain, { code, data });
-    //     return new CheckerProcess(address, { code, data });
-    // }
-    // async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
-    //     await provider.internal(via, {
-    //         value,
-    //         body: beginCell()
-    //             .endCell(),
-    //     })
-    // }
+export interface SimpleProfile {
+    value: string | null;
+}
 
-    async getCheckerStatus(provider: ContractProvider, wallet: string | null) {
-       
-            // if(!wallet) throw new Error('address is undefined')
-            // const messageBody = getIdFromAddress(wallet);
-            const result = await provider.get('get_checker', [/*{type: 'int', value: BigInt(messageBody)}*/]);
-            console.log(result.stack)
-            return result.stack.readNumber()
-        
+export function loadSimpleProfile(slice: Slice): SimpleProfile {
+    return {
+        value: slice.loadStringRefTail()
+    };
+}
+export const SimpleProfileValue: DictionaryValue<SimpleProfile> = {
+    serialize(src, builder) {
+        storeSimpleProfile(src)(builder);
+    },
+    parse(src) {
+        return {value: src.loadStringTail()};
+    },
+};
+export function storeSimpleProfile(src: SimpleProfile) {
+    return (builder: Builder) => {
+        builder.storeStringTail(src?.value || '');
     }
-    async getCheckers(provider: ContractProvider) {
-            const result = await provider.get('get_key', [{type: 'int', value: BigInt(484)}]);
-            const profile = result.stack.readString();
-            return profile;
-            
-            // return 555
+}
+export default class CheckerProcess implements Contract {
+    async getProfile(provider: ContractProvider, profile: Profile) {
+        console.log("inside getProfils")
+        const {stack} = await provider.get('get_key', [{type: 'int', value: BigInt(profile.id)}]);
+        const result = stack.readString()
+        return result;
     }
-    async sendProfile(provider: ContractProvider, via: Sender, wallet: string | null, profile: Profile) {
+    
+    async getProfiles(provider: ContractProvider) {
+        const {stack} = await provider.get('get_profiles', []);
+        const result = stack.readCell().asSlice().loadDictDirect(Dictionary.Keys.BigUint(256), SimpleProfileValue).values();
+        const profiles: Array<Profile> = []
+        result.forEach((data: SimpleProfile) => {
+            return profiles.push(Profile.getProfileFromString(data.value ?? ''));
+        })
+        return profiles;
+    }
+    
+
+
+    async sendProfile(provider: ContractProvider, via: Sender, wallet: string | null, profile: Profile): Promise<void> {
         if (wallet) {
             const messageBody = beginCell()
             .storeUint(Opcodes.addChecker, 32)
-            .storeUint(484, 256)
+            .storeUint(profile.id, 256)
             .storeStringTail(profile.getStringData())
             .endCell();
             await provider.internal(via, {
